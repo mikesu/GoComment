@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>gocomment</title>
+  </head>
+  <body>
+    <section class="section">
+      <div id="app"/>
+    </section>
+    <script src="/dist/gocomment.js"></script>
+    <script type="text/javascript">
+      GoComment.create({
+        pid:'Go Comment Demo',
+        title: 'Go Comment Demo',
+        el:'#app',
+        owner: 'gocomment',
+        repo:'test',
+        client_id:'beaff20a3a55ee7c9eb5',
+        server_url:'http://localhost:3000'
+      })
+    </script>
+  </body>
+</html>
