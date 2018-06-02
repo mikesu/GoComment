@@ -52,14 +52,12 @@ import axios from 'axios'
 import md5 from 'md5'
 const API_URL = "https://api.github.com"
 const AUTH_URL = "https://github.com/login/oauth/authorize"
-const DEFAULT_SERVER = "http://gocomment.mikesu.net"
-const DEFAULT_CLIENT_ID = "beaff20a3a55ee7c9eb5"
 const SCOPE = 'public_repo'
 const PRE_PAGE = 10
 const TOKEN_KEY = 'go_comment_github_token'
 export default {
   name: 'app',
-  props: ['owner','repo','pid','title','client_id','server_url'],
+  props: ['owner','repo','pid','title','client_id','server_url','installation_id'],
   data () {
     console.log("data")
     return {
@@ -76,7 +74,7 @@ export default {
     authUrl (){
       var authUrl = AUTH_URL+ "?client_id=" + this.client_id
       authUrl = authUrl + "&scope=" + SCOPE
-      authUrl = authUrl + "&redirect_uri=" + this.server_url
+      authUrl = authUrl + "&redirect_uri=" + this.server_url + "/oauth"
       authUrl = authUrl + "?url=" + window.btoa(getUrl())
       return authUrl
     },
@@ -84,8 +82,6 @@ export default {
   },
   created () {
     console.log("created")
-    this.server_url = this.server_url || DEFAULT_SERVER
-    this.client_id = this.client_id || DEFAULT_CLIENT_ID
     this.loadUser()
     this.loadComments()
   },
@@ -180,12 +176,16 @@ function createComment() {
     })
   }else{
     var data = {
+      installation_id: this.installation_id,
+      owner: this.owner,
+      repo: this.repo,
+      access_token: this.token,
       title: this.title,
-      body: getUrl()+'\n`' + md5(this.pid) + '`'
+      body: getUrl()+'\n---\n`' + md5(this.pid) + '`'
     }
     console.log(data)
-    var issueApiPath = API_URL + '/repos/' + this.owner + '/' + this.repo  + '/issues'
-    axios.post(issueApiPath,data,option).then((response) =>{
+    var issueApiPath = this.server_url + '/issue'
+    axios.post(issueApiPath,data).then((response) =>{
       this.comments_url = response.data.comments_url
       this.createComment()
     }).catch((error) => {
@@ -290,6 +290,6 @@ function queryStringify(query, prefix = '?') {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 @import "~bulma/bulma";
 </style>
