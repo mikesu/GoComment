@@ -1,5 +1,17 @@
 <template>
   <div id="app" >
+    <nav class="level is-mobile">
+      <div class="level-left">
+        <a class="has-text-grey-dark" :href="issue_url" target="_blank">
+          {{commentCount}} Comments
+        </a>
+      </div>
+      <div class="level-right">
+        <span class="has-text-grey-light has-text-right is-italic is-size-7">
+          powered by <a class="has-text-grey-light" href="https://github.com/apps/go-comment" target="_blank">go-comment</a>
+        </span>
+      </div>
+    </nav>
     <article class="media" v-for="comment in comments">
       <figure class="media-left">
         <p class="image is-48x48">
@@ -69,6 +81,8 @@ export default {
       avatar:'',
       user_url:'',
       comment:'',
+      issue_url:'',
+      commentCount:0,
       pageCount: 0,
       pageIndex: 1,
       comments : [],
@@ -121,13 +135,16 @@ function loadUser() {
 }
 
 function loadComments() {
-  let q = md5(this.pid) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
+  let key = this.owner + '/' + this.repo + '/' + this.pid;
+  let q = md5(key) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
   let issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q);
   axios.get(issueApiPath).then((response) => {
     console.log(response);
     if(response.data.items.length>0){
       let data = response.data.items[0];
+      this.issue_url = data.html_url;
       this.comments_url = data.comments_url;
+      this.commentCount = data.comments;
       this.pageCount = Math.ceil(data.comments/PRE_PAGE);
       this.listComments(1)
     }
@@ -188,12 +205,14 @@ function createComment() {
       repo: this.repo,
       access_token: this.token,
       title: this.title,
-      body: getUrl()+'\n---\n`' + md5(this.pid) + '`'
+      pid: this.pid,
+      body: '['+this.title+']('+getUrl()+')'
     };
     console.log(data);
     let issueApiPath = this.server_url + '/issue';
     axios.post(issueApiPath,data).then((response) =>{
       this.comments_url = response.data.comments_url;
+      this.issue_url = response.data.html_url;
       this.createComment()
     }).catch((error) => {
       console.log(error)
@@ -295,5 +314,5 @@ function queryStringify(query, prefix = '?') {
 </script>
 
 <style lang="scss" scoped>
-@import "~bulma/bulma";
+  @import "~bulma/bulma";
 </style>
