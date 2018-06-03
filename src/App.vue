@@ -3,7 +3,9 @@
     <article class="media" v-for="comment in comments">
       <figure class="media-left">
         <p class="image is-48x48">
-          <img :src="comment.avatar">
+          <a :href="comment.user_url" target="_blank">
+            <img :src="comment.avatar">
+          </a>
         </p>
       </figure>
       <div class="media-content">
@@ -27,7 +29,9 @@
     <article class="media" v-if="token">
       <figure class="media-left">
         <p class="image is-64x64">
-          <img :src="avatar">
+          <a :href="user_url" target="_blank">
+            <img :src="avatar">
+          </a>
         </p>
       </figure>
       <div class="media-content">
@@ -50,19 +54,20 @@
 <script>
 import axios from 'axios'
 import md5 from 'md5'
-const API_URL = "https://api.github.com"
-const AUTH_URL = "https://github.com/login/oauth/authorize"
-const SCOPE = 'public_repo'
-const PRE_PAGE = 10
-const TOKEN_KEY = 'go_comment_github_token'
+const API_URL = "https://api.github.com";
+const AUTH_URL = "https://github.com/login/oauth/authorize";
+const SCOPE = 'public_repo';
+const PRE_PAGE = 10;
+const TOKEN_KEY = 'go_comment_github_token';
 export default {
   name: 'app',
-  props: ['owner','repo','pid','title','client_id','server_url','installation_id'],
+  props: ['owner','repo','pid','title','client_id','server_url','installation_id', 'app_name'],
   data () {
-    console.log("data")
+    console.log("data");
     return {
       token: getToken(),
       avatar:'',
+      user_url:'',
       comment:'',
       pageCount: 0,
       pageIndex: 1,
@@ -72,18 +77,18 @@ export default {
   },
   computed: {
     authUrl (){
-      var authUrl = AUTH_URL+ "?client_id=" + this.client_id
-      authUrl = authUrl + "&scope=" + SCOPE
-      authUrl = authUrl + "&redirect_uri=" + this.server_url + "/oauth"
-      authUrl = authUrl + "?url=" + window.btoa(getUrl())
+      let authUrl = AUTH_URL+ "?client_id=" + this.client_id;
+      authUrl = authUrl + "&scope=" + SCOPE;
+      authUrl = authUrl + "&redirect_uri=" + this.server_url + "/oauth";
+      authUrl = authUrl + "?url=" + window.btoa(getUrl());
       return authUrl
     },
-    pages:pages 
+    pages:pages
   },
   created () {
-    console.log("created")
-    this.loadUser()
-    this.loadComments()
+    console.log("created");
+    this.loadUser();
+    this.loadComments();
   },
   methods:{
     loadUser:loadUser,
@@ -94,44 +99,45 @@ export default {
 }
 
 function loadUser() {
-  console.log(this.token)
+  console.log(this.token);
   if(this.token){
-    var userApiPath = API_URL + '/user'
-    var option = {
+    let userApiPath = API_URL + '/user';
+    let option = {
       headers:{
         'Authorization':'token '+this.token
-      } 
-    }
+      }
+    };
     axios.get(userApiPath,option).then((response) => {
-      console.log(response)
-      this.avatar = response.data.avatar_url
+      console.log(response);
+      this.avatar = response.data.avatar_url;
+      this.user_url = response.data.html_url;
       this.user = response.data.login
     }).catch((error) => {
-      console.log(error)
-      this.token = 0
+      console.log(error);
+      this.token = 0;
       cleanToken()
     })
   }
 }
 
 function loadComments() {
-  var q = md5(this.pid) + ' in:body repo:' + this.owner + '/' + this.repo + ' type:issue'
-  var issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q)
+  let q = md5(this.pid) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
+  let issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q);
   axios.get(issueApiPath).then((response) => {
-    console.log(response)
+    console.log(response);
     if(response.data.items.length>0){
-      var data = response.data.items[0]
-      this.comments_url = data.comments_url
-      this.pageCount = Math.ceil(data.comments/PRE_PAGE)
+      let data = response.data.items[0];
+      this.comments_url = data.comments_url;
+      this.pageCount = Math.ceil(data.comments/PRE_PAGE);
       this.listComments(1)
     }
   })
 }
 
 function listComments(pageIndex){
-  this.loading = true
-  this.pageIndex = pageIndex
-  var option = {
+  this.loading = true;
+  this.pageIndex = pageIndex;
+  let option = {
     headers:{
       'Accept':'application/vnd.github.html+json'
     },
@@ -139,19 +145,20 @@ function listComments(pageIndex){
       page:pageIndex,
       per_page:PRE_PAGE
     }
-  }
+  };
   axios.get(this.comments_url,option).then((response) =>{
-    console.log(response)
-    this.comments = []
-    for (var i=0;i<response.data.length;i++){
-      var data = response.data[i]
-      var comment = { 
+    console.log(response);
+    this.comments = [];
+    for (let i=0;i<response.data.length;i++){
+      let data = response.data[i];
+      let comment = {
         user:data.user.login,
         avatar:data.user.avatar_url,
+        user_url:data.user.html_url,
         content: data.body_html,
         created_at: new Date(data.created_at).toDateString(),
         updated_at: new Date(data.updated_at).toDateString()
-      }
+      };
       this.comments.push(comment)
     }
     this.loading = false
@@ -159,34 +166,34 @@ function listComments(pageIndex){
 }
 
 function createComment() {
-  var option ={
+  let option ={
     headers:{
       'Content-Type':'application/json',
       'Authorization':'token '+this.token
     }
-  }
+  };
   if(this.comments_url){
-    var data = {body: this.comment}
-    console.log(data)
+    let data = {body: this.comment};
+    console.log(data);
     axios.post(this.comments_url,data,option).then((response) => {
-      console.log(response)
+      console.log(response);
       this.listComments(1)
     }).catch((error) => {
       console.log(error)
     })
   }else{
-    var data = {
+    let data = {
       installation_id: this.installation_id,
       owner: this.owner,
       repo: this.repo,
       access_token: this.token,
       title: this.title,
       body: getUrl()+'\n---\n`' + md5(this.pid) + '`'
-    }
-    console.log(data)
-    var issueApiPath = this.server_url + '/issue'
+    };
+    console.log(data);
+    let issueApiPath = this.server_url + '/issue';
     axios.post(issueApiPath,data).then((response) =>{
-      this.comments_url = response.data.comments_url
+      this.comments_url = response.data.comments_url;
       this.createComment()
     }).catch((error) => {
       console.log(error)
@@ -195,59 +202,56 @@ function createComment() {
 }
 
 function pages() {
-  let items = {}
+  let items = {};
   if (this.pageCount<8) {
     for(let index = 1; index <= this.pageCount; index++){
-      let page = {
+      items[index] = {
         index: index,
         content: index,
         ellipsis: false,
         selected: index === this.pageIndex
-      }
-      items[index] = page
+      };
     }
   }else{
-    let pageIndex = 1
-    let ellipsis = false
+    let pageIndex = 1;
+    let ellipsis = false;
     for(let index = 1; index < 8 ; index++){
-      ellipsis = false
-      if (index==2&&this.pageIndex>4) {
-        ellipsis = true
+      ellipsis = false;
+      if (index===2&&this.pageIndex>4) {
+        ellipsis = true;
         if (this.pageCount-this.pageIndex>3) {
-          pageIndex = this.pageIndex - 2 
+          pageIndex = this.pageIndex - 2;
         }else{
-          pageIndex = this.pageCount - 5 
+          pageIndex = this.pageCount - 5;
         }
       }
-      if (index==6&&this.pageCount-this.pageIndex>3) {
-        ellipsis = true
-        pageIndex = this.pageCount -1 
+      if (index===6&&this.pageCount-this.pageIndex>3) {
+        ellipsis = true;
+        pageIndex = this.pageCount -1;
       }
-
-      let page = {
+      items[index] = {
         index: pageIndex,
         content: pageIndex,
         ellipsis: ellipsis,
         selected: pageIndex === this.pageIndex
-      }
-      pageIndex++
-      items[index] = page
+      };
+      pageIndex++;
     }
   }
-  return items
+  return items;
 }
 
 //static function
 function getToken() {
   // get token in URL
-  var query = queryParse()
-  var token = query['access_token']
+  let query = queryParse();
+  let token = query['access_token'];
   if(token){
-    window.localStorage.setItem(TOKEN_KEY,token)
+    window.localStorage.setItem(TOKEN_KEY,token);
   }else{
-    token = window.localStorage.getItem(TOKEN_KEY)
+    token = window.localStorage.getItem(TOKEN_KEY);
   }
-  return token
+  return token;
 }
 
 function cleanToken(){
@@ -255,38 +259,38 @@ function cleanToken(){
 }
 
 function getUrl() {
-  var query = queryParse()
-  var originQuery = {}
+  let query = queryParse();
+  let originQuery = {};
   Object.keys(query).forEach(key => {
-    if (key!='access_token'&&key!='scope'&&key!='token_type'){
+    if (key!=='access_token'&&key!=='scope'&&key!=='token_type'){
       originQuery[key] = query[key]
-    } 
-  })
-  var url = window.location.protocol + "//"
-  url = url + window.location.host
-  url = url + window.location.pathname
-  url = url + queryStringify(originQuery)
+    }
+  });
+  let url = window.location.protocol + "//";
+  url = url + window.location.host;
+  url = url + window.location.pathname;
+  url = url + queryStringify(originQuery);
   return url
 }
 
 function queryParse(search = window.location.search) {
-    if (!search) return {}
-    const queryString = search[0] === '?' ? search.substring(1) : search
-    const query = {}
+    if (!search) return {};
+    const queryString = search[0] === '?' ? search.substring(1) : search;
+    const query = {};
     queryString.split('&')
       .forEach(queryStr => {
-        const [key, value] = queryStr.split('=')
+        const [key, value] = queryStr.split('=');
         if (key) query[key] = value
-      })
+      });
 
-    return query
+    return query;
 }
 
 function queryStringify(query, prefix = '?') {
     const queryString = Object.keys(query)
       .map(key => `${key}=${encodeURIComponent(query[key] || '')}`)
-      .join('&')
-    return queryString ? prefix + queryString : ''
+      .join('&');
+    return queryString ? prefix + queryString : '';
 }
 </script>
 

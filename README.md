@@ -1,4 +1,4 @@
-# gocomment
+# Go Comment
 
 > 基于GitHub Issues的评论系统
 
