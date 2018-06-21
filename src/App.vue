@@ -21,7 +21,18 @@
         </p>
       </figure>
       <div class="media-content">
-        <strong>{{comment.user}}</strong> <small>commented on</small> <small>{{comment.updated_at}}</small>
+        <div class="level" style="margin-bottom: 5px;">
+          <div class="level-left">
+            <div class="level-item">
+              <strong>{{comment.user}}</strong>
+            </div>
+          </div>
+          <div class="level-right">
+            <div class="level-item">
+              <small>commented on </small> <small>{{comment.updated_at}}</small>
+            </div>
+          </div>
+        </div>
         <div class="content" v-html="comment.content"></div>
       </div>
     </article>
@@ -38,7 +49,7 @@
         </li>
       </ul>
     </nav>
-    <article class="media" v-if="token">
+    <article class="media" v-if="user">
       <figure class="media-left">
         <p class="image is-64x64">
           <a :href="user_url" target="_blank">
@@ -48,29 +59,30 @@
       </figure>
       <div class="media-content">
         <div class="field">
-          <p class="control">
-            <textarea class="textarea" v-model="comment" placeholder="Add a comment..."></textarea>
-          </p>
+          <markdown-editor v-bind:configs="mde_configs" v-model="comment"></markdown-editor>
         </div>
-        <a class="button is-info" v-on:click="createComment">Submit</a>
+        <div class="field">
+            <button class="button is-small" v-on:click="createComment">Post comment</button>
+        </div>
       </div>
     </article>
     <div class="media level" v-if="!token">
         <div class="media-content level-item">
-          <a class="button is-info" :href="authUrl">Login to Comment</a>
+          <a class="button is-info" :href="authUrl">Sign in to comment</a>
         </div>
     </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios'
-import md5 from 'md5'
-const API_URL = "https://api.github.com";
-const AUTH_URL = "https://github.com/login/oauth/authorize";
-const SCOPE = 'public_repo';
-const PRE_PAGE = 10;
-const TOKEN_KEY = 'go_comment_github_token';
+  import axios from 'axios';
+  import md5 from 'md5';
+  import markdownEditor from 'vue-simplemde/src/markdown-editor.vue';
+  const API_URL = "https://api.github.com";
+  const AUTH_URL = "https://github.com/login/oauth/authorize";
+  const SCOPE = 'public_repo';
+  const PRE_PAGE = 10;
+  const TOKEN_KEY = 'go_comment_github_token';
 export default {
   name: 'app',
   props: ['owner','repo','pid','title','client_id','server_url','installation_id', 'app_name'],
@@ -78,6 +90,7 @@ export default {
     console.log("data");
     return {
       token: getToken(),
+      user: '',
       avatar:'',
       user_url:'',
       comment:'',
@@ -86,7 +99,15 @@ export default {
       pageCount: 0,
       pageIndex: 1,
       comments : [],
-      loading: true
+      loading: true,
+      mde_configs:{
+        toolbar: ["bold", "italic", "heading", "|",
+                  "code", "quote", "unordered-list", "ordered-list", "|",
+                  "link", "image", "table", "horizontal-rule", "|",
+                  "preview", "guide"],
+        placeholder : 'Add a comment...',
+        status: false
+      }
     }
   },
   computed: {
@@ -109,6 +130,9 @@ export default {
     loadComments:loadComments,
     listComments:listComments,
     createComment:createComment
+  },
+  components: {
+    markdownEditor
   }
 }
 
@@ -123,7 +147,7 @@ function loadUser() {
     };
     axios.get(userApiPath,option).then((response) => {
       console.log(response);
-      this.avatar = response.data.avatar_url;
+      this.avatar = response.data.avatar_url + '&s=64';
       this.user_url = response.data.html_url;
       this.user = response.data.login
     }).catch((error) => {
@@ -170,7 +194,7 @@ function listComments(pageIndex){
       let data = response.data[i];
       let comment = {
         user:data.user.login,
-        avatar:data.user.avatar_url,
+        avatar:data.user.avatar_url  + '&s=48',
         user_url:data.user.html_url,
         content: data.body_html,
         created_at: new Date(data.created_at).toDateString(),
@@ -315,4 +339,11 @@ function queryStringify(query, prefix = '?') {
 
 <style lang="scss" scoped>
   @import "~bulma/bulma";
+  @import '~simplemde/dist/simplemde.min.css';
+</style>
+
+<style>
+  .CodeMirror, .CodeMirror-scroll {
+    min-height: 100px;
+  }
 </style>

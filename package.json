@@ -12,7 +12,8 @@
     "axios": "^0.18.0",
     "bulma": "^0.7.1",
     "md5": "^2.2.1",
-    "vue": "^2.3.3"
+    "vue": "^2.3.3",
+    "vue-simplemde": "^0.4.8"
   },
   "devDependencies": {
     "babel-core": "^6.0.0",
