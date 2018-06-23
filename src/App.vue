@@ -37,15 +37,15 @@
       </div>
     </article>
     <nav class="media pagination is-small" v-if="pageCount>1" role="navigation" aria-label="pagination">
-      <a class="pagination-previous" v-if="pageIndex>1" @click="getComments(pageIndex-1)">Prev</a>
+      <a class="pagination-previous" v-if="pageIndex>1" @click="loadComments(pageIndex-1)">Prev</a>
       <a class="pagination-previous" v-else disabled>Prev</a>
-      <a class="pagination-next" v-if="pageIndex<pageCount" @click="getComments(pageIndex+1)">Next</a>
+      <a class="pagination-next" v-if="pageIndex<pageCount" @click="loadComments(pageIndex+1)">Next</a>
       <a class="pagination-next" v-else disabled>Next</a>
       <ul class="pagination-list">
         <li v-for="page in pages">
           <span class="pagination-ellipsis" v-if="page.ellipsis">&hellip;</span>
-          <a class="pagination-link button is-current" v-else-if="page.selected" v-bind:class="{'is-loading': loading}" @click="getComments(page.index)">{{page.content}}</a>
-          <a class="pagination-link" v-else @click="getComments(page.index)">{{page.content}}</a>
+          <a class="pagination-link button is-current" v-else-if="page.selected" v-bind:class="{'is-loading': loading}" @click="loadComments(page.index)">{{page.content}}</a>
+          <a class="pagination-link" v-else @click="loadComments(page.index)">{{page.content}}</a>
         </li>
       </ul>
     </nav>
@@ -62,7 +62,7 @@
           <markdown-editor v-bind:configs="mde_configs" v-model="comment"></markdown-editor>
         </div>
         <div class="field">
-            <button class="button is-small" v-on:click="createComment">Post comment</button>
+            <button class="button" v-on:click="createComment">Post comment</button>
         </div>
       </div>
     </article>
@@ -81,7 +81,7 @@
   const API_URL = "https://api.github.com";
   const AUTH_URL = "https://github.com/login/oauth/authorize";
   const SCOPE = 'public_repo';
-  const PRE_PAGE = 10;
+  const PRE_PAGE = 5;
   const TOKEN_KEY = 'go_comment_github_token';
 export default {
   name: 'app',
@@ -123,7 +123,7 @@ export default {
   created () {
     console.log("created");
     this.loadUser();
-    this.loadComments();
+    this.loadComments(1);
   },
   methods:{
     loadUser:loadUser,
@@ -158,9 +158,10 @@ function loadUser() {
   }
 }
 
-function loadComments() {
+function loadComments(pageIndex) {
   let key = this.owner + '/' + this.repo + '/' + this.pid;
   let q = md5(key) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
+  console.log(q);
   let issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q);
   axios.get(issueApiPath).then((response) => {
     console.log(response);
@@ -170,7 +171,7 @@ function loadComments() {
       this.comments_url = data.comments_url;
       this.commentCount = data.comments;
       this.pageCount = Math.ceil(data.comments/PRE_PAGE);
-      this.listComments(1)
+      this.listComments(pageIndex)
     }
   })
 }
@@ -178,19 +179,22 @@ function loadComments() {
 function listComments(pageIndex){
   this.loading = true;
   this.pageIndex = pageIndex;
+  let pageInfo = pageinfo(this.commentCount,pageIndex);
   let option = {
     headers:{
       'Accept':'application/vnd.github.html+json'
     },
     params:{
-      page:pageIndex,
-      per_page:PRE_PAGE
+      page:pageInfo.page,
+      per_page:pageInfo.prePage
     }
   };
+  console.log(pageInfo);
   axios.get(this.comments_url,option).then((response) =>{
     console.log(response);
     this.comments = [];
-    for (let i=0;i<response.data.length;i++){
+    let pos = response.data.length-pageInfo.end-1;
+    for (let i = pos; i >= pageInfo.begin; i--){
       let data = response.data[i];
       let comment = {
         user:data.user.login,
@@ -206,6 +210,45 @@ function listComments(pageIndex){
   })
 }
 
+function pageinfo(total,page) {
+  let number = total - (page - 1) * PRE_PAGE;
+  let begin = 0;
+  let end = 0;
+  if(number < PRE_PAGE){
+    if(page>1){
+      end = PRE_PAGE - number;
+    }
+    return {
+      "page":1,
+      "prePage": PRE_PAGE,
+      "begin":begin,
+      "end":end
+    };
+  }
+  let new_pre_page = PRE_PAGE;
+  let rem = number % new_pre_page;
+  while(rem < PRE_PAGE && rem > 0){
+    new_pre_page+=1;
+    rem = number % new_pre_page;
+  }
+  let new_page = Math.ceil(number/new_pre_page);
+  if(rem==0){
+    rem = new_pre_page;
+  }
+  begin = rem - PRE_PAGE;
+  end = new_pre_page - rem;
+  if(page==1){
+    end = 0;
+  }
+  return {
+    "page":new_page,
+    "prePage": new_pre_page,
+    "begin":begin,
+    "end":end
+  };
+
+}
+
 function createComment() {
   let option ={
     headers:{
@@ -214,11 +257,15 @@ function createComment() {
     }
   };
   if(this.comments_url){
+    if(this.comment === ''){
+      return
+    }
     let data = {body: this.comment};
+    this.comment = '';
     console.log(data);
     axios.post(this.comments_url,data,option).then((response) => {
       console.log(response);
-      this.listComments(1)
+      this.loadComments(1)
     }).catch((error) => {
       console.log(error)
     })
