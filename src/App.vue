@@ -29,7 +29,7 @@
           </div>
           <div class="level-right">
             <div class="level-item">
-              <small>commented on </small> <small>{{comment.updated_at}}</small>
+              <small>{{comment.updated_at}}</small>
             </div>
           </div>
         </div>
@@ -161,7 +161,6 @@ function loadUser() {
 function loadComments(pageIndex) {
   let key = this.owner + '/' + this.repo + '/' + this.pid;
   let q = md5(key) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
-  console.log(q);
   let issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q);
   axios.get(issueApiPath).then((response) => {
     console.log(response);
@@ -201,8 +200,8 @@ function listComments(pageIndex){
         avatar:data.user.avatar_url  + '&s=48',
         user_url:data.user.html_url,
         content: data.body_html,
-        created_at: new Date(data.created_at).toDateString(),
-        updated_at: new Date(data.updated_at).toDateString()
+        created_at: new Date(data.created_at).toLocaleString(),
+        updated_at: new Date(data.updated_at).toLocaleString()
       };
       this.comments.push(comment)
     }
@@ -253,6 +252,7 @@ function createComment() {
   let option ={
     headers:{
       'Content-Type':'application/json',
+      'Accept':'application/vnd.github.html+json',
       'Authorization':'token '+this.token
     }
   };
@@ -265,7 +265,18 @@ function createComment() {
     console.log(data);
     axios.post(this.comments_url,data,option).then((response) => {
       console.log(response);
-      this.loadComments(1)
+      let comment = {
+        user:response.data.user.login,
+        avatar:response.data.user.avatar_url  + '&s=48',
+        user_url:response.data.user.html_url,
+        content: response.data.body_html,
+        created_at: new Date(response.data.created_at).toLocaleString(),
+        updated_at: new Date(response.data.updated_at).toLocaleString()
+      };
+      this.comments.pop();
+      this.comments.unshift(comment);
+      this.commentCount++;
+      this.pageCount = Math.ceil(this.commentCount/PRE_PAGE);
     }).catch((error) => {
       console.log(error)
     })
