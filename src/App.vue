@@ -80,7 +80,6 @@
   import markdownEditor from 'vue-simplemde/src/markdown-editor.vue';
   const API_URL = "https://api.github.com";
   const AUTH_URL = "https://github.com/login/oauth/authorize";
-  const SCOPE = 'public_repo';
   const PRE_PAGE = 5;
   const TOKEN_KEY = 'go_comment_github_token';
 export default {
@@ -113,7 +112,6 @@ export default {
   computed: {
     authUrl (){
       let authUrl = AUTH_URL+ "?client_id=" + this.client_id;
-      authUrl = authUrl + "&scope=" + SCOPE;
       authUrl = authUrl + "&redirect_uri=" + this.server_url + "/oauth";
       authUrl = authUrl + "?url=" + window.btoa(getUrl());
       return authUrl
@@ -349,6 +347,7 @@ function getToken() {
   let token = query['access_token'];
   if(token){
     window.localStorage.setItem(TOKEN_KEY,token);
+    window.history.pushState(null, null, getUrl());
   }else{
     token = window.localStorage.getItem(TOKEN_KEY);
   }
