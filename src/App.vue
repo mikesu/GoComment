@@ -62,7 +62,7 @@
           <markdown-editor v-bind:configs="mde_configs" v-model="comment"></markdown-editor>
         </div>
         <div class="field">
-            <button class="button" v-on:click="createComment">Post comment</button>
+            <button class="button" v-on:click="createComment" v-bind:class="{'is-loading': posting}">Post comment</button>
         </div>
       </div>
     </article>
@@ -99,6 +99,7 @@ export default {
       pageIndex: 1,
       comments : [],
       loading: true,
+      posting: false,
       mde_configs:{
         toolbar: ["bold", "italic", "heading", "|",
                   "code", "quote", "unordered-list", "ordered-list", "|",
@@ -247,6 +248,7 @@ function pageinfo(total,page) {
 }
 
 function createComment() {
+  this.posting = true;
   let option ={
     headers:{
       'Content-Type':'application/json',
@@ -259,9 +261,9 @@ function createComment() {
       return
     }
     let data = {body: this.comment};
-    this.comment = '';
     console.log(data);
     axios.post(this.comments_url,data,option).then((response) => {
+      this.comment = '';
       console.log(response);
       let comment = {
         user:response.data.user.login,
@@ -275,6 +277,7 @@ function createComment() {
       this.comments.unshift(comment);
       this.commentCount++;
       this.pageCount = Math.ceil(this.commentCount/PRE_PAGE);
+      this.posting = false;
     }).catch((error) => {
       console.log(error)
     })
@@ -347,7 +350,7 @@ function getToken() {
   let token = query['access_token'];
   if(token){
     window.localStorage.setItem(TOKEN_KEY,token);
-    window.history.pushState(null, null, getUrl());
+    window.history.replaceState(null, null, getUrl());
   }else{
     token = window.localStorage.getItem(TOKEN_KEY);
   }
