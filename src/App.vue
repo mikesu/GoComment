@@ -161,6 +161,7 @@ function loadComments(pageIndex) {
   let key = this.owner + '/' + this.repo + '/' + this.pid;
   let q = md5(key) + ' in:body repo:' + this.owner + '/' + this.repo + ' author:app/'+ this.app_name +' type:issue';
   let issueApiPath = API_URL + '/search/issues?q=' + encodeURIComponent(q);
+  this.loading = true;
   axios.get(issueApiPath).then((response) => {
     console.log(response);
     if(response.data.items.length>0){
@@ -175,7 +176,6 @@ function loadComments(pageIndex) {
 }
 
 function listComments(pageIndex){
-  this.loading = true;
   this.pageIndex = pageIndex;
   let pageInfo = pageinfo(this.commentCount,pageIndex);
   let option = {
@@ -264,20 +264,24 @@ function createComment() {
     console.log(data);
     axios.post(this.comments_url,data,option).then((response) => {
       this.comment = '';
-      console.log(response);
-      let comment = {
-        user:response.data.user.login,
-        avatar:response.data.user.avatar_url  + '&s=48',
-        user_url:response.data.user.html_url,
-        content: response.data.body_html,
-        created_at: new Date(response.data.created_at).toLocaleString(),
-        updated_at: new Date(response.data.updated_at).toLocaleString()
-      };
-      this.comments.pop();
-      this.comments.unshift(comment);
-      this.commentCount++;
-      this.pageCount = Math.ceil(this.commentCount/PRE_PAGE);
       this.posting = false;
+      console.log(response);
+      if(this.pageIndex==1){
+        let comment = {
+          user:response.data.user.login,
+          avatar:response.data.user.avatar_url  + '&s=48',
+          user_url:response.data.user.html_url,
+          content: response.data.body_html,
+          created_at: new Date(response.data.created_at).toLocaleString(),
+          updated_at: new Date(response.data.updated_at).toLocaleString()
+        };
+        this.comments.pop();
+        this.comments.unshift(comment);
+        this.commentCount++;
+        this.pageCount = Math.ceil(this.commentCount/PRE_PAGE);
+      }else{
+        this.loadComments(1);
+      }
     }).catch((error) => {
       console.log(error)
     })
